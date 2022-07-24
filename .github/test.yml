@@ -1,0 +1,98 @@
+name: Test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create Test Issue
+        id: create-test-issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          ISSUE_TITLE: Example
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          issue_number=$(
+            basename $(
+              gh issue create \
+                --repo "$REPOSITORY" \
+                --title "Example" \
+                --body "Example"
+            )
+          )
+          echo "::set-output name=number::$issue_number"
+
+      - name: Create Progress Comment
+        uses: nodes-app/action-progress-comment-create@v1
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          tasks: |
+            Task 1
+            Task 2
+            Task 3
+
+      - name: Wait
+        run: sleep 5
+
+      - name: Force Failure
+        uses: ./
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          successful: false
+          error: Failed to complete first task.
+
+      - name: Wait
+        run: sleep 5
+
+      - name: Retry
+        uses: nodes-app/action-progress-comment-create@v1
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          tasks: |
+            Task 1
+            Task 2
+            Task 3
+
+      - name: Wait
+        run: sleep 5
+
+      - name: Update Progress
+        uses: ./
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          successful: true
+
+      - name: Wait
+        run: sleep 10
+
+      - name: Update Progress
+        uses: ./
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          successful: true
+
+      - name: Wait
+        run: sleep 15
+
+      - name: Update Progress
+        uses: ./
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          successful: true
+
+      - name: Close Test Issue
+        if: always()
+        env:
+          ISSUE_NUMBER: ${{ steps.create-test-issue.outputs.number }}
+          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: gh issue close $ISSUE_NUMBER --repo "$REPOSITORY"
