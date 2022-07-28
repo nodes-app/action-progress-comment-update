@@ -67,6 +67,9 @@ inputs:
   error:
     description: Error to display as part of the failure message
     required: false
+  auto-close:
+    description: Close issue on success or failure
+    required: false
 
 runs:
   using: composite
@@ -94,13 +97,13 @@ runs:
         STATUS_LABEL_FAILURE: ${{ inputs.status-label-failure }}
         STATUS_LABEL_CANCELLED: ${{ inputs.status-label-cancelled }}
         ERROR: ${{ inputs.error }}
+        AUTO_CLOSE: ${{ inputs.auto-close }}
       run: |
         username=$(gh api -H "Accept: application/vnd.github+json" /user --jq '.login')
         comment=$(gh api -H "Accept: application/vnd.github+json" "/repos/$REPOSITORY/issues/$ISSUE_NUMBER/comments" | jq --arg username $username 'select(.[].user.login == $username)[0]')
-        body=$(
+        state=$(
           echo "$comment" \
           | jq \
-            -r \
             '
             .body
             | split(" -->")[0]
@@ -134,6 +137,7 @@ runs:
               | .[-1].status_label_failure = (if env.STATUS_LABEL_FAILURE == "" then .[-1].status_label_failure else env.STATUS_LABEL_FAILURE end)
               | .[-1].status_label_cancelled = (if env.STATUS_LABEL_CANCELLED == "" then .[-1].status_label_cancelled else env.STATUS_LABEL_CANCELLED end)
               | .[-1].error = (if env.ERROR == "" then .[-1].error else env.ERROR end)
+              | .[-1].auto_close = (if env.AUTO_CLOSE == "" then .[-1].auto_close else (env.AUTO_CLOSE | fromjson) end)
               | .[-1].updated = $now
               | .[-1].tasks[$current_task_index].stopped = $now
               | 
@@ -154,85 +158,111 @@ runs:
                 | .[-1].stopped = $now
                 | .[-1].status = "failure"
               ) end
-              | . as $state
-              | .[-1]
-              | .status as $status
-              | .["title_"+$status] as $title
-              | (
-                if $status == "in_progress" then (
-                  .duration_estimate as $duration_estimate
-                  | if $duration_estimate > -1 then (
-                    .message_in_progress + " " + (
-                      ($duration_estimate | tostring) as $duration_estimate_str
-                      | .message_in_progress_duration_estimate
-                      | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
-                      | sub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
-                    )
-                  ) else (
-                    .message_in_progress
-                  ) end
-                ) elif $status == "success" then (
-                  (.stopped - .started | tostring) as $duration_str
-                  | .message_success
-                  | sub("\\${DURATION}"; $duration_str)
-                  | sub("\\$DURATION"; $duration_str)
-                ) elif $status == "failure" then (
-                  .error as $error
-                  | .message_failure
-                  | sub("\\${ERROR}"; $error)
-                  | sub("\\$ERROR"; $error)
-                ) else "" end
-              ) as $message
-              | 
-              (
-                .task_format as $task_format
-                | .duration_format as $duration_format
-                | .duration_estimate_format as $duration_estimate_format
-                |
-                [
-                  .tasks[]
-                  | .name as $name
-                  | .status as $task_status
-                  | ($state | .[-1] | .["status_label_"+$task_status]) as $status_label
-                  | (
-                    if (
-                      ($task_status == "success" or $task_status == "failure")
-                      and .started > -1
-                      and .stopped > .started
-                    ) then (
-                      (.stopped - .started | tostring) as $seconds_str
-                      | $duration_format
-                      | sub("\\${DURATION}"; $seconds_str)
-                      | sub("\\$DURATION"; $seconds_str)
-                    ) elif (
-                      ($task_status == "waiting" or $task_status == "running")
-                      and .duration_estimate > -1
-                    ) then (
-                      (.duration_estimate | tostring) as $duration_estimate_str
-                      | $duration_estimate_format
-                      | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
-                      | sub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
-                    ) else "" end
-                  ) as $duration
-                  | $task_format
-                  | sub("\\${STATUS}"; $status_label)
-                  | sub("\\$STATUS"; $status_label)
-                  | sub("\\${NAME}"; $name)
-                  | sub("\\$NAME"; $name)
-                  | sub("\\${DURATION}"; $duration)
-                  | sub("\\$DURATION"; $duration)
-                ]
-                | join("\n")
-              ) as $tasks
-              | "<!-- "+($state | tostring)+" -->\n# "+$title+"\n\n"+$tasks+"\n\n"+$message
             ) end
             '
         )
 
-        if [ ! -z "$body" ]; then
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/$REPOSITORY/issues/comments/$(echo "$comment" | jq '.id')" \
-            -f body="$body"
+        if [ -z "$state" ]; then
+          # Skip
+          exit
+        fi
+
+        body=$(
+          echo "$state" \
+          | jq \
+            -r \
+            '
+            . as $state
+            | .[-1]
+            | .status as $status
+            | .["title_"+$status] as $title
+            | (
+              if $status == "in_progress" then (
+                .duration_estimate as $duration_estimate
+                | if $duration_estimate > -1 then (
+                  .message_in_progress + " " + (
+                    ($duration_estimate | tostring) as $duration_estimate_str
+                    | .message_in_progress_duration_estimate
+                    | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
+                    | sub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
+                  )
+                ) else (
+                  .message_in_progress
+                ) end
+              ) elif $status == "success" then (
+                (.stopped - .started | tostring) as $duration_str
+                | .message_success
+                | sub("\\${DURATION}"; $duration_str)
+                | sub("\\$DURATION"; $duration_str)
+              ) elif $status == "failure" then (
+                .error as $error
+                | .message_failure
+                | sub("\\${ERROR}"; $error)
+                | sub("\\$ERROR"; $error)
+              ) else "" end
+            ) as $message
+            | 
+            (
+              .task_format as $task_format
+              | .duration_format as $duration_format
+              | .duration_estimate_format as $duration_estimate_format
+              |
+              [
+                .tasks[]
+                | .name as $name
+                | .status as $task_status
+                | ($state | .[-1] | .["status_label_"+$task_status]) as $status_label
+                | (
+                  if (
+                    ($task_status == "success" or $task_status == "failure")
+                    and .started > -1
+                    and .stopped > .started
+                  ) then (
+                    (.stopped - .started | tostring) as $seconds_str
+                    | $duration_format
+                    | sub("\\${DURATION}"; $seconds_str)
+                    | sub("\\$DURATION"; $seconds_str)
+                  ) elif (
+                    ($task_status == "waiting" or $task_status == "running")
+                    and .duration_estimate > -1
+                  ) then (
+                    (.duration_estimate | tostring) as $duration_estimate_str
+                    | $duration_estimate_format
+                    | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
+                    | sub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
+                  ) else "" end
+                ) as $duration
+                | $task_format
+                | sub("\\${STATUS}"; $status_label)
+                | sub("\\$STATUS"; $status_label)
+                | sub("\\${NAME}"; $name)
+                | sub("\\$NAME"; $name)
+                | sub("\\${DURATION}"; $duration)
+                | sub("\\$DURATION"; $duration)
+              ]
+              | join("\n")
+            ) as $tasks
+            | "<!-- "+($state | tostring)+" -->\n# "+$title+"\n\n"+$tasks+"\n\n"+$message
+          ) end
+          '
+        )
+
+        gh api \
+          --method PATCH \
+          -H "Accept: application/vnd.github+json" \
+          "/repos/$REPOSITORY/issues/comments/$(echo "$comment" | jq '.id')" \
+          -f body="$body"
+
+        close=$(
+          echo "$state" \
+          | jq \
+            '
+            .[-1]
+            |
+            .auto_close
+            and ( .status | . == "success" or . == "failure" )
+            '
+        )
+        if "$close"; then
+          gh issue close "$ISSUE_NUMBER" --repo "$REPOSITORY"
         fi
