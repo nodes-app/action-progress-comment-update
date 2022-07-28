@@ -45,6 +45,16 @@ jobs:
           issue-number: ${{ steps.create-test-issue.outputs.number }}
           successful: false
           error: Failed to complete first task.
+        
+      - name: Wait
+        run: sleep 5
+
+      - name: Force Skip
+        uses: ./
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+          successful: false
 
       - name: Wait
         run: sleep 5
