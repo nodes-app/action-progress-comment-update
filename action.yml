@@ -177,11 +177,14 @@ runs:
             | .[-1]
             | .status as $status
             | .["title_"+$status] as $title
-            | (
+            | 
+            (
               if $status == "in_progress" then (
                 .duration_estimate as $duration_estimate
-                | if $duration_estimate > -1 then (
-                  .message_in_progress + " " + (
+                | 
+                if $duration_estimate > -1 then (
+                  .message_in_progress + " " + 
+                  (
                     ($duration_estimate | tostring) as $duration_estimate_str
                     | .message_in_progress_duration_estimate
                     | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
@@ -244,8 +247,7 @@ runs:
               | join("\n")
             ) as $tasks
             | "<!-- "+($state | tostring)+" -->\n# "+$title+"\n\n"+$tasks+"\n\n"+$message
-          ) end
-          '
+            '
         )
 
         gh api \
