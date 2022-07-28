@@ -109,8 +109,9 @@ runs:
             | split(" -->")[0]
             | ltrimstr("<!-- ")
             | fromjson
-            | if .[-1].status != "in_progress" then (
-              ""
+            | 
+            if .[-1].status != "in_progress" then (
+              null
             ) else (
               (now | floor) as $now
               |
@@ -162,7 +163,7 @@ runs:
             '
         )
 
-        if [ -z "$state" ]; then
+        if [ "$state" = 'null' ]; then
           # Skip
           exit
         fi
