@@ -105,4 +105,8 @@ jobs:
           ISSUE_NUMBER: ${{ steps.create-test-issue.outputs.number }}
           GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
           REPOSITORY: ${{ github.repository }}
-        run: gh issue close $ISSUE_NUMBER --repo "$REPOSITORY"
+        run: |
+          is_open=$(gh issue view "$ISSUE_NUMBER" --repo "$REPOSITORY" --json state --jq '.state == "OPEN"')
+          if "$is_open"; then
+            gh issue close $ISSUE_NUMBER --repo "$REPOSITORY"
+          fi
