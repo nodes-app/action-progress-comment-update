@@ -187,8 +187,8 @@ runs:
                   (
                     ($duration_estimate | tostring) as $duration_estimate_str
                     | .message_in_progress_duration_estimate
-                    | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
-                    | sub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
+                    | gsub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
+                    | gsub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
                   )
                 ) else (
                   .message_in_progress
@@ -196,13 +196,13 @@ runs:
               ) elif $status == "success" then (
                 (.stopped - .started | tostring) as $duration_str
                 | .message_success
-                | sub("\\${DURATION}"; $duration_str)
-                | sub("\\$DURATION"; $duration_str)
+                | gsub("\\${DURATION}"; $duration_str)
+                | gsub("\\$DURATION"; $duration_str)
               ) elif $status == "failure" then (
                 .error as $error
                 | .message_failure
-                | sub("\\${ERROR}"; $error)
-                | sub("\\$ERROR"; $error)
+                | gsub("\\${ERROR}"; $error)
+                | gsub("\\$ERROR"; $error)
               ) else "" end
             ) as $message
             | 
@@ -224,25 +224,25 @@ runs:
                   ) then (
                     (.stopped - .started | tostring) as $seconds_str
                     | $duration_format
-                    | sub("\\${DURATION}"; $seconds_str)
-                    | sub("\\$DURATION"; $seconds_str)
+                    | gsub("\\${DURATION}"; $seconds_str)
+                    | gsub("\\$DURATION"; $seconds_str)
                   ) elif (
                     ($task_status == "waiting" or $task_status == "running")
                     and .duration_estimate > -1
                   ) then (
                     (.duration_estimate | tostring) as $duration_estimate_str
                     | $duration_estimate_format
-                    | sub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
-                    | sub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
+                    | gsub("\\${DURATION_ESTIMATE}"; $duration_estimate_str)
+                    | gsub("\\$DURATION_ESTIMATE"; $duration_estimate_str)
                   ) else "" end
                 ) as $duration
                 | $task_format
-                | sub("\\${STATUS}"; $status_label)
-                | sub("\\$STATUS"; $status_label)
-                | sub("\\${NAME}"; $name)
-                | sub("\\$NAME"; $name)
-                | sub("\\${DURATION}"; $duration)
-                | sub("\\$DURATION"; $duration)
+                | gsub("\\${STATUS}"; $status_label)
+                | gsub("\\$STATUS"; $status_label)
+                | gsub("\\${NAME}"; $name)
+                | gsub("\\$NAME"; $name)
+                | gsub("\\${DURATION}"; $duration)
+                | gsub("\\$DURATION"; $duration)
               ]
               | join("\n")
             ) as $tasks
