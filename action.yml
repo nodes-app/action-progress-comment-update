@@ -244,8 +244,8 @@ runs:
                   -f body=\"<!-- \($state | tostring) -->\n# \($title)\n\n\($tasks)\n\n\($message)\"
               | if (
                 $state[-1]
-                | .auto_close
-                and ( .status | . == "success" or . == "failure" )
+                | .auto_close 
+                  and ( .status | . == "success" or . == "failure" )
               ) then (
                 . += "& gh issue close \"\(env.ISSUE_NUMBER)\" --repo \"\(env.REPOSITORY)\" & wait"
               ) else . end
