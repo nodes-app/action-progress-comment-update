@@ -117,7 +117,7 @@ runs:
             | ltrimstr("<!-- ")
             | fromjson
             | 
-            if .[-1].status != "in_progress" "" else (
+            if .[-1].status != "in_progress" then "" else (
               (now | floor) as $now
               |
               (
