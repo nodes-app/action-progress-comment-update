@@ -237,12 +237,11 @@ runs:
                 ]
                 | join("\n")
               ) as $tasks
-              | "<!-- \($state | tostring) -->\n# \($title)\n\n\($tasks)\n\n\($message)" as $body
               | "gh api \\
                   --method PATCH \\
                   -H \"Accept: application/vnd.github+json\" \\
                   \"/repos/\(env.REPOSITORY)/issues/comments/\($comment_id)\" \\
-                  -f body=\"\($body)\""
+                  -f body=\"<!-- \($state | tostring) -->\n# \($title)\n\n\($tasks)\n\n\($message)\"
               | if (
                 $state[-1]
                 | .auto_close
