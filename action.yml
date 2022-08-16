@@ -248,7 +248,7 @@ runs:
                 | .auto_close
                 and ( .status | . == "success" or . == "failure" )
               ) then (
-                "& gh issue close \"\(env.ISSUE_NUMBER)\" --repo \"\(env.REPOSITORY)\" & wait"
+                . += "& gh issue close \"\(env.ISSUE_NUMBER)\" --repo \"\(env.REPOSITORY)\" & wait"
               ) else . end
             ) end
             '
