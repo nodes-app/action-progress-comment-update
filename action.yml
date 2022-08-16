@@ -241,10 +241,11 @@ runs:
                   --method PATCH \\
                   -H \"Accept: application/vnd.github+json\" \\
                   \"/repos/\(env.REPOSITORY)/issues/comments/\($comment_id)\" \\
-                  -f body=\"<!-- \($state | tostring) -->\n# \($title)\n\n\($tasks)\n\n\($message)\"
+                  -f body=\"<!-- \($state | tostring) -->\n# \($title)\n\n\($tasks)\n\n\($message)\""
               | if (
                 $state[-1]
-                | .auto_close and ( .status | . == "success" or . == "failure" )
+                | .auto_close 
+                  and ( .status | . == "success" or . == "failure" )
               ) then (
                 . += "& gh issue close \"\(env.ISSUE_NUMBER)\" --repo \"\(env.REPOSITORY)\" & wait"
               ) else . end
