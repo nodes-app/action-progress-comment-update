@@ -244,7 +244,7 @@ runs:
                   \"/repos/\(env.REPOSITORY)/issues/comments/\($comment_id)\" \\
                   -f body=\"\($body)\""
               | if (
-                $state.[-1]
+                $state[-1]
                 | .auto_close
                 and ( .status | . == "success" or . == "failure" )
               ) then (
