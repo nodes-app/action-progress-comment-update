@@ -240,15 +240,15 @@ runs:
               | "<!-- \($state | tostring) -->\n# \($title)\n\n\($tasks)\n\n\($message)" as $body
               | "gh api \\\\
                   --method PATCH \\\\
-                  -H \\"Accept: application/vnd.github+json\\" \\\\
-                  \\"/repos/\(env.REPOSITORY)/issues/comments/\($comment_id)\\" \\\\
+                  -H \'Accept: application/vnd.github+json\' \\\\
+                  \'/repos/\(env.REPOSITORY)/issues/comments/\($comment_id)\' \\\\
                   -f body=\'\($body)\'"
               | if (
                 $state[-1]
                 | .auto_close 
                   and ( .status | . == "success" or . == "failure" )
               ) then (
-                . += " & gh issue close \\"\(env.ISSUE_NUMBER)\\" --repo \\"\(env.REPOSITORY)\\" & wait"
+                . += " & gh issue close \'\(env.ISSUE_NUMBER)\' --repo \'\(env.REPOSITORY)\' & wait"
               ) else . end
             ) end
             '
