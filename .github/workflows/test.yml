@@ -34,7 +34,17 @@ jobs:
             Task 1
             Task 2
             Task 3
+          start: false
 
+      - name: Wait
+        run: sleep 5
+      
+      - name: Start Progress
+        uses: ./
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          issue-number: ${{ steps.create-test-issue.outputs.number }}
+      
       - name: Wait
         run: sleep 5
 
