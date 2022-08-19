@@ -119,12 +119,12 @@ runs:
             -H "Accept: application/vnd.github+json" \
             "/repos/$REPOSITORY/issues/$ISSUE_NUMBER/comments" \
           | jq \
+            --slurp \
             -r \
             --arg username $username \
             $'
-            select(
-              .[].user.login == $username
-            )[-1]
+            .[]
+            | select(.[].user.login == $username)[-1]
             | .id as $comment_id
             | .body
             | split(" -->")[0]
